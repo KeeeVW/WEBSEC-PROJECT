@@ -13,10 +13,16 @@
                     <div class="col-md-4">
                         <div class="card mb-4 shadow-sm">
                             @if ($product->photo)
+                                @php
+                                    $imagePath = 'uploads/products/' . $product->photo;
+                                    if (!file_exists(public_path($imagePath))) {
+                                        $imagePath = 'images/' . $product->photo;
+                                    }
+                                @endphp
                                 @if (str_starts_with($product->photo, 'storage/'))
                                     <img src="{{ asset($product->photo) }}" class="bd-placeholder-img card-img-top" width="100%" height="225" alt="{{ $product->name }}">
                                 @else
-                                    <img src="{{ asset('images/' . $product->photo) }}" class="bd-placeholder-img card-img-top" width="100%" height="225" alt="{{ $product->name }}">
+                                    <img src="{{ asset($imagePath) }}" class="bd-placeholder-img card-img-top" width="100%" height="225" alt="{{ $product->name }}">
                                 @endif
                             @else
                                 <div class="bg-light rounded-top p-5 text-center" style="height: 225px;">

@@ -13,6 +13,13 @@ use App\Http\Controllers\Web\CreditsController;
 use App\Http\Controllers\Web\EmployeeCustomerController;
 use App\Http\Controllers\Web\EmployeeController;
 use App\Http\Controllers\GitHubAuthController;
+use App\Http\Controllers\Web\RoleController;
+use App\Http\Controllers\ManagerController;
+use App\Http\Controllers\SupportController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\GoogleAuthController;
+use App\Http\Controllers\LinkedInAuthController;
+use App\Http\Controllers\TwitterAuthController;
 
 Route::get('register', [UsersController::class, 'register'])->name('register');
 Route::post('register', [UsersController::class, 'doRegister'])->name('do_register');
@@ -28,16 +35,18 @@ Route::get('users/edit_password/{user?}', [UsersController::class, 'editPassword
 Route::post('users/save_password/{user}', [UsersController::class, 'savePassword'])->name('save_password');
 
 // Password reset routes
-Route::get('forgot-password', [UsersController::class, 'forgotPassword'])->name('forgot_password');
-Route::post('forgot-password', [UsersController::class, 'processForgotPassword'])->name('process_forgot_password');
+Route::get('forgot-password', [UsersController::class, 'forgotPassword'])->name('password.request');
+Route::post('forgot-password', [UsersController::class, 'processForgotPassword'])->name('password.email');
+Route::post('process-forgot-password', [UsersController::class, 'processForgotPassword'])->name('process_forgot_password');
+Route::get('reset-password-token/{token}', [UsersController::class, 'resetPasswordWithToken'])->name('reset_password_token');
 
 // Temporary password reset (Basic method)
 Route::get('change-temp-password', [UsersController::class, 'changeTempPassword'])->name('change_temp_password');
 Route::post('update-temp-password', [UsersController::class, 'updateTempPassword'])->name('update_temp_password');
 
 // Professional password reset
-Route::get('reset-password/{token}', [UsersController::class, 'resetPasswordWithToken'])->name('reset_password_token');
-Route::post('reset-password/{token}', [UsersController::class, 'processResetPasswordWithToken'])->name('process_reset_password_token');
+Route::get('reset-password/{token}', [UsersController::class, 'resetPasswordWithToken'])->name('password.reset');
+Route::post('reset-password/{token}', [UsersController::class, 'processResetPasswordWithToken'])->name('password.update');
 
 // Legacy password reset routes (with security questions)
 Route::get('reset-password/{user}', [UsersController::class, 'resetPassword'])->name('reset_password');
@@ -158,7 +167,6 @@ Route::get('/test-result', function () {
 // Add these routes for roles and permissions management
 Route::group(['middleware' => ['auth', 'permission:admin_users']], function () {
     Route::resource('roles', RolesController::class);
-    Route::resource('permissions', PermissionsController::class);
 });
 
 // GitHub Authentication Routes
@@ -200,13 +208,8 @@ Route::prefix('employee-customers')->name('employee_customers.')->group(function
 });
 
 // Role Management Routes
-Route::prefix('roles')->name('roles.')->group(function () {
-    Route::get('/', [RolesController::class, 'index'])->name('index');
-    Route::get('/create', [RolesController::class, 'create'])->name('create');
-    Route::post('/', [RolesController::class, 'store'])->name('store');
-    Route::get('/{role}/edit', [RolesController::class, 'edit'])->name('edit');
-    Route::put('/{role}', [RolesController::class, 'update'])->name('update');
-    Route::delete('/{role}', [RolesController::class, 'destroy'])->name('destroy');
+Route::middleware(['auth', 'role:admin'])->group(function () {
+    Route::resource('roles', RoleController::class);
 });
 
 // Permission Management Routes
@@ -228,4 +231,94 @@ Route::prefix('permissions')->name('permissions.')->group(function () {
 Route::middleware(['auth'])->group(function () {
     Route::match(['post', 'delete'], '/products/{product}/favorite', [ProductsController::class, 'favorite'])->name('products.favorite');
     Route::get('/favorites', [ProductsController::class, 'favoritesList'])->name('products.favorites.list');
+    Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
 });
+
+// Email Verification Routes
+Route::get('/email/verify/{id}/{hash}', [UsersController::class, 'verifyEmail'])
+    ->middleware(['signed'])
+    ->name('verification.verify');
+Route::get('/resend-verification', [UsersController::class, 'resendVerification'])
+    ->middleware(['auth', 'throttle:6,1'])
+    ->name('verification.resend');
+
+// Manager Routes
+Route::middleware(['auth', \App\Http\Middleware\CheckManagerPermissions::class.':orders'])->group(function () {
+    Route::get('/manager/orders', [\App\Http\Controllers\Manager\OrderController::class, 'index'])->name('manager.orders.index');
+    Route::get('/manager/orders/create', [\App\Http\Controllers\Manager\OrderController::class, 'create'])->name('manager.orders.create');
+    Route::post('/manager/orders', [\App\Http\Controllers\Manager\OrderController::class, 'store'])->name('manager.orders.store');
+    Route::get('/manager/orders/{order}', [\App\Http\Controllers\Manager\OrderController::class, 'show'])->name('manager.orders.show');
+    Route::put('/manager/orders/{order}', [\App\Http\Controllers\Manager\OrderController::class, 'update'])->name('manager.orders.update');
+    Route::delete('/manager/orders/{order}', [\App\Http\Controllers\Manager\OrderController::class, 'destroy'])->name('manager.orders.destroy');
+});
+
+Route::middleware(['auth', \App\Http\Middleware\CheckManagerPermissions::class.':inventory'])->group(function () {
+    Route::get('/manager/inventory', [\App\Http\Controllers\Manager\InventoryController::class, 'index'])->name('manager.inventory.index');
+    Route::get('/manager/inventory/create', [\App\Http\Controllers\Manager\InventoryController::class, 'create'])->name('manager.inventory.create');
+    Route::post('/manager/inventory', [\App\Http\Controllers\Manager\InventoryController::class, 'store'])->name('manager.inventory.store');
+    Route::get('/manager/inventory/{item}/edit', [\App\Http\Controllers\Manager\InventoryController::class, 'edit'])->name('manager.inventory.edit');
+    Route::put('/manager/inventory/{item}', [\App\Http\Controllers\Manager\InventoryController::class, 'update'])->name('manager.inventory.update');
+    Route::delete('/manager/inventory/{item}', [\App\Http\Controllers\Manager\InventoryController::class, 'destroy'])->name('manager.inventory.destroy');
+});
+
+Route::middleware(['auth', \App\Http\Middleware\CheckManagerPermissions::class.':reports'])->group(function () {
+    Route::get('/manager/reports', [\App\Http\Controllers\Manager\ReportController::class, 'index'])->name('manager.reports.index');
+    Route::get('/manager/reports/customers', [\App\Http\Controllers\Manager\ReportController::class, 'customers'])->name('manager.reports.customers');
+    Route::get('/manager/reports/export', [\App\Http\Controllers\Manager\ReportController::class, 'export'])->name('manager.reports.export');
+});
+
+// Manager Reports Routes
+Route::middleware(['auth', \App\Http\Middleware\CheckManagerPermissions::class.':reports'])->prefix('manager/reports')->name('manager.reports.')->group(function () {
+    Route::get('/sales', [App\Http\Controllers\Manager\ReportController::class, 'sales'])->name('sales');
+    Route::get('/sales/export/{format}', [App\Http\Controllers\Manager\ReportController::class, 'exportSales'])->name('sales.export');
+    Route::get('/inventory', [App\Http\Controllers\Manager\ReportController::class, 'inventory'])->name('inventory');
+    Route::get('/customers', [App\Http\Controllers\Manager\ReportController::class, 'customers'])->name('customers');
+});
+
+// Support Routes
+Route::middleware(['auth', 'role:support'])->prefix('support')->name('support.')->group(function () {
+    // Ticket Routes
+    Route::get('/tickets', [SupportController::class, 'tickets'])->name('tickets.index');
+    Route::get('/tickets/create', [SupportController::class, 'createTicket'])->name('tickets.create');
+    Route::post('/tickets', [SupportController::class, 'storeTicket'])->name('tickets.store');
+    Route::get('/tickets/{ticket}', [SupportController::class, 'showTicket'])->name('tickets.show');
+    Route::post('/tickets/{ticket}/respond', [SupportController::class, 'respondTicket'])->name('tickets.respond');
+    
+    // Order Routes
+    Route::get('/orders', [SupportController::class, 'orders'])->name('orders.index');
+    Route::get('/orders/create', [SupportController::class, 'createOrder'])->name('orders.create');
+    Route::post('/orders', [SupportController::class, 'storeOrder'])->name('orders.store');
+    Route::get('/orders/{order}', [SupportController::class, 'showOrder'])->name('orders.show');
+});
+
+Route::get('/auth/google', [GoogleAuthController::class, 'redirect'])->name('auth.google');
+Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
+
+Route::get('/auth/linkedin', [LinkedInAuthController::class, 'redirect'])->name('auth.linkedin');
+Route::get('/auth/linkedin/callback', [LinkedInAuthController::class, 'callback'])->name('auth.linkedin.callback');
+
+Route::get('/auth/twitter', [TwitterAuthController::class, 'redirect'])->name('auth.twitter');
+Route::get('/auth/twitter/callback', [TwitterAuthController::class, 'callback'])->name('auth.twitter.callback');
+
+// Standard Laravel Authentication Routes (including password reset)
+// These were added previously but are causing issues with the controller.
+// We will rely on the existing UsersController methods instead.
+// Route::get('email/verify', function () {
+//     return view('auth.verify-email');
+// })->middleware('auth')->name('verification.notice');
+//
+// Route::get('forgot-password', \Illuminate\Auth\Controllers\PasswordController::class)
+//     ->middleware('guest')
+//     ->name('password.request');
+//
+// Route::post('forgot-password', \Illuminate\Auth\Controllers\PasswordController::class)
+//     ->middleware('guest')
+//     ->name('password.email');
+//
+// Route::get('reset-password/{token}', \Illuminate\Auth\Controllers\PasswordController::class)
+//     ->middleware('guest')
+//     ->name('password.reset');
+//
+// Route::post('reset-password', \Illuminate\Auth\Controllers\PasswordController::class)
+//     ->middleware('guest')
+//     ->name('password.update');

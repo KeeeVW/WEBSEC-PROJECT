@@ -18,25 +18,7 @@
             </tr>
             @if($user->isCustomer())
             <tr>
-<<<<<<< HEAD
                 <th>Credit Balance</th>
-=======
-                <th>Admin Status</th>
-                <td>
-                    @if($user->is_admin)
-                        <span class="badge bg-danger">Administrator</span>
-                    @else
-                        <span class="badge bg-secondary">Regular User</span>
-                    @endif
-                </td>
-            </tr>
-            <tr>
-                <th>Security Question</th>
-                <td>{{ $user->security_question ? $user->security_question : 'Not set' }}</td>
-            </tr>
-            <tr>
-                <th>Roles</th>
->>>>>>> 6c4297d3fdfd66398b2d51a8dc8705571982f414
                 <td>
                     <span class="fs-4 fw-bold text-success">${{ number_format($user->getCreditAmount(), 2) }}</span>
                 </td>
@@ -49,7 +31,7 @@
                 </td>
             </tr>
             @endif
-       
+        
             <tr>
                 <th>User Type</th>
                 <td>
@@ -93,16 +75,17 @@
             </div>
             @endif
         </div>
-        
+
         @if($user->isCustomer())
         <div class="mt-4">
             <h4>Customer Options</h4>
             <div class="d-flex gap-2">
                 <a href="{{ route('credits.index') }}" class="btn btn-primary">View Credit History</a>
                 <a href="{{ route('purchase_history') }}" class="btn btn-info">View Purchase History</a>
+                <a href="{{ route('products.favorites.list') }}" class="btn btn-warning">View Favorite Products</a>
             </div>
         </div>
-        
+
         @if(isset($creditHistory) && $creditHistory->count() > 0)
         <div class="mt-4">
             <h4>Recent Credit Transactions</h4>

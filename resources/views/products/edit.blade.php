@@ -16,7 +16,7 @@
     </div>
 @endif
 
-<form action="{{route('products_save', $product->id)}}" method="post">
+<form action="{{route('products_save', $product->id)}}" method="post" enctype="multipart/form-data">
     {{ csrf_field() }}
     @foreach($errors->all() as $error)
     <div class="alert alert-danger">
@@ -46,7 +46,12 @@
         </div>
         <div class="col-6">
             <label for="photo" class="form-label">Photo:</label>
-            <input type="text" class="form-control" placeholder="Photo" name="photo" required value="{{$product->photo}}">
+            <input type="file" class="form-control" name="photo" accept="image/*">
+            @if($product->photo)
+                <div class="mt-2">
+                    <img src="{{ asset('uploads/products/' . $product->photo) }}" alt="Current photo" class="img-thumbnail" style="max-height: 100px;">
+                </div>
+            @endif
         </div>
     </div>
     <div class="row mb-2">

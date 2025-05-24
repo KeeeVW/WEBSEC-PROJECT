@@ -53,12 +53,16 @@ class UsersController extends Controller {
         'name' => ['required', 'string', 'max:255'],
         'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
         'password' => ['required', 'string', 'min:8', 'confirmed'],
+        'security_question' => ['required', 'string'],
+        'security_answer' => ['required', 'string'],
     ]);
 
     $user = User::create([
         'name' => $request->name,
         'email' => $request->email,
         'password' => Hash::make($request->password),
+        'security_question' => $request->security_question,
+        'security_answer' => $request->security_answer,
     ]);
     
     // Assign Customer role to newly registered users
@@ -70,9 +74,11 @@ class UsersController extends Controller {
         'amount' => 0.00
     ]);
 
-    Auth::login($user);
+    // Send verification email
+    $user->sendEmailVerificationNotification();
 
-    return redirect('/');
+    return redirect()->route('login')
+        ->with('success', 'Registration successful! Please check your email to verify your account.');
     }
 
     public function login(Request $request) {
@@ -80,7 +86,6 @@ class UsersController extends Controller {
     }
 
     public function doLogin(Request $request) {
-    	
     	if(!Auth::attempt(['email' => $request->email, 'password' => $request->password]))
             return redirect()->back()->withInput($request->input())->withErrors('Invalid login information.');
 
@@ -89,7 +94,13 @@ class UsersController extends Controller {
         if ($user->isBlocked()) {
             Auth::logout();
             return redirect()->back()->withInput($request->only('email'))
-                ->withErrors('Your account have been blocked.');
+                ->withErrors('Your account has been blocked.');
+        }
+
+        if (!$user->hasVerifiedEmail()) {
+            Auth::logout();
+            return redirect()->back()->withInput($request->only('email'))
+                ->withErrors('Please verify your email address before logging in.');
         }
         
         Auth::setUser($user);
@@ -301,10 +312,16 @@ class UsersController extends Controller {
             $user->save();
             
             // Send email with temp password
-            Mail::send('emails.reset_password_temp', ['user' => $user, 'tempPassword' => $tempPassword], function ($message) use ($user) {
-                $message->to($user->email);
-                $message->subject('Your Temporary Password');
-            });
+            try {
+                Mail::send('emails.reset_password_temp', ['user' => $user, 'tempPassword' => $tempPassword], function ($message) use ($user) {
+                    $message->to($user->email);
+                    $message->subject('Your Temporary Password');
+                });
+                \Log::info('Temporary password email sent to: ' . $user->email);
+            } catch (\Exception $e) {
+                \Log::error('Failed to send temporary password email: ' . $e->getMessage());
+                return redirect()->back()->with('error', 'Failed to send email. Please try again later.');
+            }
             
             return redirect()->route('login')->with('success', 'A temporary password has been sent to your email.');
         } else {
@@ -327,10 +344,16 @@ class UsersController extends Controller {
             $resetLink = route('reset_password_token', ['token' => $token]) . '?email=' . urlencode($user->email);
             
             // Send email with reset link
-            Mail::send('emails.reset_password_link', ['user' => $user, 'resetLink' => $resetLink], function ($message) use ($user) {
-                $message->to($user->email);
-                $message->subject('Reset Your Password');
-            });
+            try {
+                Mail::send('emails.reset_password_link', ['user' => $user, 'resetLink' => $resetLink], function ($message) use ($user) {
+                    $message->to($user->email);
+                    $message->subject('Reset Your Password');
+                });
+                \Log::info('Password reset link email sent to: ' . $user->email);
+            } catch (\Exception $e) {
+                \Log::error('Failed to send password reset link email: ' . $e->getMessage());
+                return redirect()->back()->with('error', 'Failed to send email. Please try again later.');
+            }
             
             return redirect()->route('login')->with('success', 'A password reset link has been sent to your email.');
         }
@@ -603,5 +626,42 @@ class UsersController extends Controller {
             $user->save();
             return redirect()->back()->with('success', 'User has been blocked successfully');
         }
+    }
+
+    public function verifyEmail(Request $request, $id, $hash)
+    {
+        $user = User::find($id);
+
+        if (!$user) {
+            return redirect()->route('login')
+                ->with('error', 'Invalid verification link.');
+        }
+
+        if ($user->hasVerifiedEmail()) {
+            return redirect()->route('login')
+                ->with('info', 'Email already verified.');
+        }
+
+        if (!hash_equals((string) $hash, sha1($user->getEmailForVerification()))) {
+            return redirect()->route('login')
+                ->with('error', 'Invalid verification link.');
+        }
+
+        $user->markEmailAsVerified();
+
+        return redirect()->route('login')
+            ->with('success', 'Email verified successfully! You can now login.');
+    }
+
+    public function resendVerification(Request $request)
+    {
+        $user = auth()->user();
+        
+        if ($user && !$user->hasVerifiedEmail()) {
+            $user->sendEmailVerificationNotification();
+            return redirect()->back()->with('success', 'Verification email has been resent.');
+        }
+        
+        return redirect()->back()->with('error', 'Your email is already verified.');
     }
 } 

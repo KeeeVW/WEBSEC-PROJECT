@@ -4,7 +4,8 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use App\Models\Grade;
+use Illuminate\Support\Facades\DB;
+use App\Models\User;
 
 class GradeSeeder extends Seeder
 {
@@ -13,58 +14,46 @@ class GradeSeeder extends Seeder
      */
     public function run(): void
     {
-        // Check if grades already exist
-        if (Grade::count() > 0) {
-            return; // Skip if grades already exist
-        }
+        $users = User::all();
+        $gradeLetters = ['A', 'B', 'C', 'D', 'F'];
         
-        // Sample grades for Term 1
-        $term1Grades = [
-            [
-                'course_name' => 'Web Security',
-                'term' => 'Fall 2024',
-                'credit_hours' => 3,
-                'grade' => 'A'
-            ],
-            [
-                'course_name' => 'Linux Programming',
-                'term' => 'Fall 2024',
-                'credit_hours' => 3,
-                'grade' => 'B+'
-            ],
-            [
-                'course_name' => 'Computer Networks',
-                'term' => 'Fall 2024',
-                'credit_hours' => 4,
-                'grade' => 'A-'
-            ],
-        ];
+        foreach ($users as $user) {
+            // Generate random scores
+            $score = rand(60, 100);
+            $totalPoints = 100;
+            $percentage = ($score / $totalPoints) * 100;
+            
+            // Determine grade letter
+            $gradeLetter = match(true) {
+                $percentage >= 90 => 'A',
+                $percentage >= 80 => 'B',
+                $percentage >= 70 => 'C',
+                $percentage >= 60 => 'D',
+                default => 'F'
+            };
+            
+            // Generate feedback based on grade
+            $feedback = match($gradeLetter) {
+                'A' => 'Excellent work! You have demonstrated a strong understanding of web security concepts.',
+                'B' => 'Good job! You have a solid understanding of web security concepts with some areas for improvement.',
+                'C' => 'Satisfactory performance. Consider reviewing the material to strengthen your understanding.',
+                'D' => 'Needs improvement. Please review the material and consider additional study.',
+                'F' => 'Failed. Please review the material thoroughly and retake the assessment.',
+                default => 'No feedback available.'
+            };
 
-        // Sample grades for Term 2
-        $term2Grades = [
-            [
-                'course_name' => 'Database Systems',
-                'term' => 'Spring 2025',
-                'credit_hours' => 3,
-                'grade' => 'B'
-            ],
-            [
-                'course_name' => 'Digital Forensics',
-                'term' => 'Spring 2025',
-                'credit_hours' => 3,
-                'grade' => 'A+'
-            ],
-            [
-                'course_name' => 'Cybersecurity',
-                'term' => 'Spring 2025',
-                'credit_hours' => 3,
-                'grade' => 'B-'
-            ],
-        ];
-
-        // Create the grades
-        foreach (array_merge($term1Grades, $term2Grades) as $grade) {
-            Grade::create($grade);
+            DB::table('grades')->insert([
+                'user_id' => $user->id,
+                'score' => $score,
+                'total_points' => $totalPoints,
+                'percentage' => $percentage,
+                'grade_letter' => $gradeLetter,
+                'feedback' => $feedback,
+                'is_passed' => $percentage >= 60,
+                'completed_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
         }
     }
 }

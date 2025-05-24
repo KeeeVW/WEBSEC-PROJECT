@@ -64,7 +64,13 @@
         <div class="card-body">
             <div class="row">
                 <div class="col col-sm-12 col-lg-4">
-                    <img src="{{asset("images/$product->photo")}}" class="img-thumbnail" alt="{{$product->name}}" width="100%">
+                    @php
+                        $imagePath = asset("uploads/products/$product->photo");
+                        if (!file_exists(public_path("uploads/products/$product->photo"))) {
+                            $imagePath = asset("images/$product->photo");
+                        }
+                    @endphp
+                    <img src="{{ $imagePath }}" class="img-thumbnail" alt="{{$product->name}}" width="100%">
                 </div>
                 <div class="col col-sm-12 col-lg-8 mt-3">
                     <div class="row mb-2">
@@ -113,9 +119,9 @@
                                 @csrf
                                 @if ($isFavorited)
                                     @method('DELETE') {{-- Use DELETE method for unfavorite --}}
-                                    <button type="submit" class="btn btn-warning btn-sm">Unfavorite</button>
+                                    <button type="submit" class="btn btn-outline-primary btn-sm">Unfavorite</button>
                                 @else
-                                    <button type="submit" class="btn btn-outline-primary btn-sm">Favorite</button>
+                                    <button type="submit" class="btn btn-warning btn-sm">Favorite</button>
                                 @endif
                             </form>
 

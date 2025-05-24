@@ -9,7 +9,13 @@
                 @if (str_starts_with($product->photo, 'storage/'))
                     <img src="{{ asset($product->photo) }}" class="img-fluid rounded shadow" alt="{{ $product->name }}" style="max-height: 400px; width: auto;">
                 @else
-                    <img src="{{ asset('images/' . $product->photo) }}" class="img-fluid rounded shadow" alt="{{ $product->name }}" style="max-height: 400px; width: auto;">
+                    @php
+                        $imagePath = 'uploads/products/' . $product->photo;
+                        if (!file_exists(public_path($imagePath))) {
+                            $imagePath = 'images/' . $product->photo;
+                        }
+                    @endphp
+                    <img src="{{ asset($imagePath) }}" class="img-fluid rounded shadow" alt="{{ $product->name }}" style="max-height: 400px; width: auto;">
                 @endif
             @else
                 <div class="bg-light rounded p-5 text-center" style="height: 400px;">

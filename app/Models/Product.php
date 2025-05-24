@@ -3,6 +3,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Product extends Model  {
 
@@ -12,8 +13,48 @@ class Product extends Model  {
         'price',
         'model',
         'description',
-        'photo'
+        'photo',
+        'category_id',
+        'grade_id',
+        'stock',
+        'is_active'
     ];
+    
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($product) {
+            // Ensure category_id is set
+            if (!$product->category_id) {
+                $defaultCategory = \DB::table('categories')->first();
+                if ($defaultCategory) {
+                    $product->category_id = $defaultCategory->id;
+                }
+            }
+            
+            \Log::info('Product creating event:', [
+                'attributes' => $product->getAttributes(),
+                'original' => $product->getOriginal()
+            ]);
+        });
+    }
+    
+    /**
+     * Get the category that owns the product.
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
+    }
+    
+    /**
+     * Get the grade that owns the product.
+     */
+    public function grade(): BelongsTo
+    {
+        return $this->belongsTo(Grade::class);
+    }
     
     /**
      * Get the product's inventory.

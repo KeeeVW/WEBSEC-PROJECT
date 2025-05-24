@@ -84,14 +84,24 @@ class ProductsController extends Controller {
 	        'model' => ['required', 'string', 'max:256'],
 	        'description' => ['required', 'string', 'max:1024'],
 	        'price' => ['required', 'numeric', 'min:0'],
-			'quantity' => ['required', 'integer', 'min:0']
+			'quantity' => ['required', 'integer', 'min:0'],
+			'photo' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048']
 	    ]);
 
 		try {
 			DB::beginTransaction();
 
 			$product = $product??new Product();
-			$product->fill($request->except('quantity'));
+			$product->fill($request->except(['quantity', 'photo']));
+
+			// Handle photo upload
+			if ($request->hasFile('photo')) {
+				$photo = $request->file('photo');
+				$filename = time() . '_' . $photo->getClientOriginalName();
+				$photo->move(public_path('uploads/products'), $filename);
+				$product->photo = $filename;
+			}
+
 			$product->save();
 
 			// Update inventory
@@ -102,7 +112,8 @@ class ProductsController extends Controller {
 			return redirect()->route('products_list')->with('success', 'Product saved successfully');
 		} catch (\Exception $e) {
 			DB::rollBack();
-			return redirect()->back()->withInput($request->all())
+			return redirect()->back()
+				->withInput()
 				->with('error', 'Failed to save product: ' . $e->getMessage());
 		}
 	}
@@ -176,7 +187,7 @@ class ProductsController extends Controller {
     /**
      * Toggle favorite status for a product.
      */
-    public function favorite(Request $request, Product $product)
+	public function favorite(Request $request, Product $product)
     {
         $user = Auth::user();
 
