@@ -1,14 +1,16 @@
 <?php
+#by omar
 
 // Database configuration
-$host = '127.0.0.1';
+$host = 'localhost';
 $username = 'root';
 $password = '';
 $database = 'websec';
+$port = 3307;
 
 try {
     // Create connection without database
-    $conn = new PDO("mysql:host=$host", $username, $password);
+    $conn = new PDO("mysql:host=$host;port=$port", $username, $password);
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
     // Create database if not exists
@@ -127,7 +129,10 @@ try {
     
     // Get role IDs
     $stmt = $conn->query("SELECT id, name FROM roles WHERE name IN ('manager', 'support')");
-    $roles = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+    $roles = [];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $roles[$row['name']] = $row['id'];
+    }
     
     // Assign permissions to roles
     $stmt = $conn->prepare("INSERT IGNORE INTO role_has_permissions (permission_id, role_id) 
@@ -135,12 +140,16 @@ try {
     
     // Assign manager permissions
     foreach ($managerPermissions as $permission) {
-        $stmt->execute([$roles['manager'], $permission]);
+        if (isset($roles['manager'])) {
+            $stmt->execute([$roles['manager'], $permission]);
+        }
     }
     
     // Assign support permissions
     foreach ($supportPermissions as $permission) {
-        $stmt->execute([$roles['support'], $permission]);
+        if (isset($roles['support'])) {
+            $stmt->execute([$roles['support'], $permission]);
+        }
     }
     echo "Permissions assigned to roles successfully\n";
     
