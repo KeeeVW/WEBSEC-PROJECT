@@ -1,4 +1,7 @@
 <?php
+
+#by omar
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Web\ProductsController;
@@ -63,52 +66,6 @@ Route::get('purchase-history', [ProductsController::class, 'purchaseHistory'])->
 Route::get('/', function () {
     return view('welcome');
 })->name('home');
-
-Route::get('/multable', function (Request $request) {
-    $j = $request->number??5;
-    $msg = $request->msg;
-    return view('multable', compact("j", "msg"));
-});
-
-Route::get('/even', function () {
-    return view('even');
-});
-
-Route::get('/prime', function () {
-    return view('prime');
-});
-
-Route::get('/test', function () {
-    return view('test');
-});
-
-Route::get('/bill', function () {
-    return view('bill'); 
- });
-
- Route::get('/transcript', function () {
-    return view('transcript');
-});
-Route::get('/calculator', function () {
-    return view('calculator');
- });
- 
- Route::get('/gpa-calculator', function () {
-     $courses = [
-         ['code' => 'Web and Security Technologies ', 'title' => '', 'credit' => 3],
-         ['code' => 'Linux and Shell Programming ', 'title' => ' ', 'credit' => 3],
-         ['code' => 'Network Operation and Managment', 'title' => ' ', 'credit' => 3],
-         ['code' => 'Digital Forensics Fundamental ', 'title' => ' ', 'credit' => 3],
-     ];
-     
-     return view('gpa-calculator', compact('courses'));
- });
-
- Route::resource('grades', GradeController::class);
-
- Route::resource('questions', QuestionController::class);
-Route::get('exam/start', [ExamController::class, 'start'])->name('exam.start');
-Route::post('exam/submit', [ExamController::class, 'submit'])->name('exam.submit');
 
 Route::get('/test-connection', function () {
     return 'Connection test successful!';
@@ -276,7 +233,7 @@ Route::middleware(['auth', \App\Http\Middleware\CheckManagerPermissions::class.'
 });
 
 // Support Routes
-Route::middleware(['auth', 'role:support'])->prefix('support')->name('support.')->group(function () {
+Route::middleware(['auth'])->prefix('support')->name('support.')->group(function () {
     // Ticket Routes
     Route::get('/tickets', [SupportController::class, 'tickets'])->name('tickets.index');
     Route::get('/tickets/create', [SupportController::class, 'createTicket'])->name('tickets.create');
